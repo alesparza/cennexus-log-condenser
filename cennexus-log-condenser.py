@@ -64,20 +64,17 @@ def parse_xlsx(inputfile, outputfile):
   # for debugging, limit how many rows are processed
   if DEBUG:
     i = 0
-    row_count = DEBUG_ROWS
 
   # using a progress bar here
   with tqdm(total=row_count, ascii=True, desc='Working...') as pbar:
     for row in ws.rows:
       if DEBUG:
         i = i + 1
-        if i == DEBUG_ROWS + 1:
-          break
       pbar.update(1)
       message = row[DESCRIPTION_COL_NUM].value
       if message is None: # just in case a row is empty
         continue
-      if DEBUG:
+      if DEBUG and i < DEBUG_ROWS:
         print(message)
         print('Starts with SEND?: {}'.format(message.startswith(SEND_STRING)))
         print('Starts with RECEIVE?: {}'.format(message.startswith(RECEIVE_STRING)))
@@ -114,12 +111,12 @@ def parse_xlsx(inputfile, outputfile):
         else:
           time = str(hour) + ':' + str(minute)
 
-        if DEBUG:
+        if DEBUG and i < DEBUG_ROWS:
           print('Valid message, appending to new worksheet...')
         ns.append([timestamp, message, isReceive, isSend, 
           isLogin, isStorage, date, hour, minute, time])
         continue
-        if DEBUG:
+        if DEBUG and i < DEBUG_ROWS:
           print('SEND/RECEIVE not found, skipping row')
 
   # close workbook and progress bar since they are done
@@ -134,11 +131,11 @@ def parse_xlsx(inputfile, outputfile):
   global isCSV
   if isCSV:
     if DEBUG: 
-      print('Removing temp file {}'.format(inputfile))
+      print('Removing temp file {}'.format(str(inputfile)))
     os.remove(inputfile)
     isCSV = False # reset this in case another file is processed later
   print('Data saved!')
-  return
+  return outputfile
 
 
 def merge_files(dir_source):
@@ -154,7 +151,16 @@ def process_dir(dir_source):
 
   @param dir_source the source directory
   """
-  pass
+  files = os.listdir(dir_source)
+  file_count = len(files)
+  if DEBUG:
+    print('Directory contents: {} ({})'.format(files, file_count))
+
+  with tqdm(total=file_count, ascii=True, desc='Processing files...') as pbar:
+    for f in files:
+      
+      pbar.update(1)
+  pbar.close()
 
 
 # main method
@@ -208,6 +214,8 @@ def main(argv):
 
    # handle directory files first
    if dir_source != '':
+     if DEBUG: 
+       print('Processing files in directory {}'.format(dir_source))
      process_dir(dir_source)
      merge_files(dir_source)
      print('Directory process not implemented')
