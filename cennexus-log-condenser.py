@@ -48,16 +48,16 @@ def parse_xlsx(inputfile, outputfile):
   @param outputfile the desired name of the output file
   """
   # open the workbooks and get the active sheets
-  print('Loading workbook: {}'.format(inputfile))
+  tqdm.write('Loading workbook: {}'.format(inputfile))
   wb = load_workbook(filename=inputfile, read_only=True)
   ws = wb.active
   nb = Workbook(write_only=True)
   ns = nb.create_sheet()
   row_count = ws.max_row
-  print('Loaded Workbook!')
+  tqdm.write('Loaded Workbook!')
 
   # loop through each row and write it to the new file if it is a valid message
-  print('Processing data... Please be patient')
+  tqdm.write('Processing data... Please be patient')
   ns.append(['Timestamp', 'Message', 'isReceive', 'isSend',
     'isLogin', 'isStorage', 'Date', 'Hour', 'Minute', 'Time'])
 
@@ -75,9 +75,9 @@ def parse_xlsx(inputfile, outputfile):
       if message is None: # just in case a row is empty
         continue
       if DEBUG and i < DEBUG_ROWS:
-        print(message)
-        print('Starts with SEND?: {}'.format(message.startswith(SEND_STRING)))
-        print('Starts with RECEIVE?: {}'.format(message.startswith(RECEIVE_STRING)))
+        tqdm.write(message)
+        tqdm.write('Starts with SEND?: {}'.format(message.startswith(SEND_STRING)))
+        tqdm.write('Starts with RECEIVE?: {}'.format(message.startswith(RECEIVE_STRING)))
 
       # check for valid messages and process message counts and date/time
       isSend = 0
@@ -112,29 +112,29 @@ def parse_xlsx(inputfile, outputfile):
           time = str(hour) + ':' + str(minute)
 
         if DEBUG and i < DEBUG_ROWS:
-          print('Valid message, appending to new worksheet...')
+          tqdm.write('Valid message, appending to new worksheet...')
         ns.append([timestamp, message, isReceive, isSend, 
           isLogin, isStorage, date, hour, minute, time])
         continue
         if DEBUG and i < DEBUG_ROWS:
-          print('SEND/RECEIVE not found, skipping row')
+          tqdm.write('SEND/RECEIVE not found, skipping row')
 
   # close workbook and progress bar since they are done
   pbar.close()
   wb.close()
-  print('Data parse complete!')
+  tqdm.write('Data parse complete!')
 
   # save the new data in a fresh workbook
-  print('Saving to ' + outputfile + '...')
+  tqdm.write('Saving to ' + outputfile + '...')
   nb.save(outputfile)
   nb.close()
   global isCSV
   if isCSV:
     if DEBUG: 
-      print('Removing temp file {}'.format(str(inputfile)))
+      tqdm.write('Removing temp file {}'.format(str(inputfile)))
     os.remove(inputfile)
     isCSV = False # reset this in case another file is processed later
-  print('Data saved!')
+  tqdm.write('Data saved!')
   return outputfile
 
 
@@ -163,7 +163,7 @@ def process_dir(dir_source):
       input_file = dir_source + '\\' + f
       # if the input is .csv, convert to .xlsx
       if f.endswith('.csv'):
-          print('This is a .csv file, converting to .xlsx...')
+          tqdm.write('This is a .csv file, converting to .xlsx...')
           input_file = convert_csv(input_file)
           isCSV = True
       parse_xlsx(input_file, dir_source + '\\' + str(i) + '.' +
