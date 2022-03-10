@@ -5,7 +5,7 @@ import sys, getopt, csv, os
 
 # defined constants
 DEBUG = False # set to False for regular usage
-DEBUG_ROWS = 100
+DEBUG_ROWS = 20
 DESCRIPTION_COL_NUM = 3
 SEND_STRING = 'Send: <STX>2M|'
 RECEIVE_STRING = 'Receive: <STX>3O|'
@@ -143,7 +143,7 @@ def merge_files(dir_source):
 
   @param dir_source the source directory
   """
-  pass
+  print('File merging not implemented')
 
 
 def process_dir(dir_source):
@@ -153,12 +153,22 @@ def process_dir(dir_source):
   """
   files = os.listdir(dir_source)
   file_count = len(files)
+  i = 0
+  global isCSV
   if DEBUG:
-    print('Directory contents: {} ({})'.format(files, file_count))
+    print('Directory contents ({1}): {0}'.format(files, file_count))
 
   with tqdm(total=file_count, ascii=True, desc='Processing files...') as pbar:
     for f in files:
-      
+      input_file = dir_source + '\\' + f
+      # if the input is .csv, convert to .xlsx
+      if f.endswith('.csv'):
+          print('This is a .csv file, converting to .xlsx...')
+          input_file = convert_csv(input_file)
+          isCSV = True
+      parse_xlsx(input_file, dir_source + '\\' + str(i) + '.' +
+          str(file_count - 1) + '-parsed-' + '.xlsx')  
+      i = i + 1
       pbar.update(1)
   pbar.close()
 
@@ -218,8 +228,8 @@ def main(argv):
        print('Processing files in directory {}'.format(dir_source))
      process_dir(dir_source)
      merge_files(dir_source)
-     print('Directory process not implemented')
-     sys.exit(1)
+     print('Bye bye')
+     sys.exit(0)
 
    # otherwise handle the single input file
    else:
