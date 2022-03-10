@@ -12,7 +12,117 @@ RECEIVE_STRING = 'Receive: <STX>3O|'
 LOGIN_STRING = '2M|1|101'
 STORAGE_STRING = '2M|1|103|'
 DEFAULT_SAVE = 'parsed.xlsx'
-USAGE = 'usage: cennexus-log-condenser.py -i <inputfile> -o <outputfile>'
+USAGE = """usage: cennexus-log-condenser.py -i <inputfile> -o <outputfile> 
+alt-usage: cennexus-log-condenser.py -d <directory>"""
+
+# converts a csv to a .xlsx file
+def convert_csv(filename):
+  wb = Workbook()
+  ws = wb.active
+  with open(filename, 'r') as f:
+    for row in csv.reader(f):    
+      ws.append(row)
+  f.close()
+  index = filename.index('.csv')
+  filename = filename[:index] + '.xlsx'
+  wb.save(filename)
+  wb.close()
+  return filename
+
+
+def parse_xlsx(inputfile, outputfile):
+  # open the workbooks and get the active sheets
+  print('Loading workbook: {}'.format(inputfile))
+  wb = load_workbook(filename=inputfile, read_only=True)
+  ws = wb.active
+  nb = Workbook(write_only=True)
+  ns = nb.create_sheet()
+  row_count = ws.max_row
+  if DEBUG:
+    if (wb.epoch == utils.datetime.CALENDAR_WINDOWS_1900):
+      print('Workbook using the 1900 date system')
+    else:
+      print('Workbook not using the 1900 date system')
+  print('Loaded Workbook!')
+
+  # loop through each row and write it to the new file if it is a valid message
+  print('Processing data... Please be patient')
+  ns.append(['Timestamp', 'Message', 'isReceive', 'isSend',
+    'isLogin', 'isStorage', 'Date', 'Hour', 'Minute', 'Time'])
+
+  if DEBUG:
+    i = 0
+    row_count = DEBUG_ROWS
+
+  # using a progress bar here
+  with tqdm(total=row_count, ascii=True, desc='Working...') as pbar:
+    for row in ws.rows:
+      if DEBUG:
+        i = i + 1
+        if i == DEBUG_ROWS + 1:
+          break
+      pbar.update(1)
+      message = row[DESCRIPTION_COL_NUM].value
+      if message is None:
+        continue
+      if DEBUG:
+        print(message)
+        print('Starts with SEND?: {}'.format(message.startswith(SEND_STRING)))
+        print('Starts with RECEIVE?: {}'.format(message.startswith(RECEIVE_STRING)))
+
+      # check for valid messages
+      isSend = 0
+      isReceive = 0
+      isLogin = 0
+      isStorage = 0
+      if message.startswith(RECEIVE_STRING):
+        isReceive = 1
+      elif message.startswith(SEND_STRING):
+        isSend = 1
+        if LOGIN_STRING in message:
+          isLogin = 1
+        elif STORAGE_STRING in message:
+          isStorage = 1
+         
+      # keep valid messages or move on
+      if (isSend == 1 or isReceive == 1):
+
+        # get the various date components
+        timestamp = row[0].value
+        split_timestamp = timestamp.split(' ')
+        date = split_timestamp[0]
+        time_string = split_timestamp[1]
+        time_array = time_string.split(':')
+        hour = int(time_array[0])
+        if split_timestamp[2] == 'PM':
+          hour = hour + 12
+        minute = int(time_array[1])
+        if int(minute) < 10:
+          time = str(hour) + ':0' + str(minute) 
+        else:
+          time = str(hour) + ':' + str(minute)
+
+        if DEBUG:
+          print('Valid message, appending to new worksheet...')
+        ns.append([timestamp, message, isReceive, isSend, 
+          isLogin, isStorage, date, hour, minute, time])
+        continue
+        if DEBUG:
+          print('SEND/RECEIVE not found, skipping row')
+
+  # close workbook and progress bar since they are done
+  pbar.close()
+  wb.close()
+  print('Data parse complete!')
+
+  # save the new data in a fresh workbook
+  print('Saving to ' + outputfile + '...')
+  nb.save(outputfile)
+  nb.close()
+  if isCSV:
+    os.remove(inputfile)
+  print('Data saved!')
+
 
 # main method
 def main(argv):
@@ -28,10 +138,13 @@ def main(argv):
 
    input_file = ''
    output_file = DEFAULT_SAVE
+   dir_source = ''
+   global isCSV
+   isCSV = False
 
    # get the arguments for input and output file
    try:
-      opts, args = getopt.getopt(argv, 'hi:o:',['ifile=', 'ofile='])
+       opts, args = getopt.getopt(argv, 'hi:o:d:',['input=', 'output=', 'dir='])
 
    except getopt.GetoptError:
       print(USAGE)
@@ -43,127 +156,41 @@ def main(argv):
       if opt == '-h':
          print(USAGE)
          sys.exit(2)
-      elif opt in ('-i', '--ifile'):
+      elif opt in ('-d', '--dir'):
+         dir_source = arg
+      elif opt in ('-i', '--input'):
          input_file = arg
-      elif opt in ('-o', '--ofile'):
+      elif opt in ('-o', '--output'):
          output_file = arg
 
    if DEBUG:
       print('Input file: ' + input_file)
       print('Output file: ' + output_file)
+      print('Directory source: ' + dir_source)
 
    # quit if there is no input file; output file has a default filename
-   if input_file == '':
+   if input_file == '' and dir_source == '':
       print(USAGE)
       sys.exit(2)
 
    # if the input is .csv, convert to .xlsx
    if input_file.endswith('.csv'):
        print('This is a .csv file, converting to .xlsx...')
-       csv_wb = Workbook()
-       csv_ws = csv_wb.active
-       with open(input_file, 'r') as f:
-           for row in csv.reader(f):
-               csv_ws.append(row)
-       f.close()
-       index = input_file.index('.csv')
-       input_file = input_file[:index] + '.xlsx'
-       csv_wb.save(input_file)
-       csv_wb.close()
+       input_file = convert_csv(input_file)
+       isCSV = True
 
 
-   # open the workbooks and get the active sheets
-   print('Loading workbook: {}'.format(input_file))
-   wb = load_workbook(filename=input_file, read_only=True)
-   ws = wb.active
-   nb = Workbook(write_only=True)
-   ns = nb.create_sheet()
-   row_count = ws.max_row
-   if DEBUG:
-      if (wb.epoch == utils.datetime.CALENDAR_WINDOWS_1900):
-         print('Workbook using the 1900 date system')
-      else:
-         print('Workbook not using the 1900 date system')
-   print('Loaded Workbook!')
+   # convert the file
+   if dir_source == '':
+       parse_xlsx(input_file, output_file)   
+       print('Bye bye')
+       sys.exit(0)
 
-   # loop through each row and write it to the new file if it is a valid message
-   print('Processing data... Please be patient')
-   ns.append(['Timestamp', 'Message', 'isReceive', 'isSend',
-       'isLogin', 'isStorage', 'Date', 'Hour', 'Minute', 'Time'])
-
-   if DEBUG:
-      i = 0
-      row_count = DEBUG_ROWS
-
-   # using a progress bar here
-   with tqdm(total=row_count, ascii=True, desc='Working...') as pbar:
-      for row in ws.rows:
-         if DEBUG:
-            i = i + 1
-            if i == DEBUG_ROWS + 1:
-               break
-         pbar.update(1)
-         message = row[DESCRIPTION_COL_NUM].value
-         if message is None:
-             continue
-         if DEBUG:
-            print(message)
-            print('Starts with SEND?: {}'.format(message.startswith(SEND_STRING)))
-            print('Starts with RECEIVE?: {}'.format(message.startswith(RECEIVE_STRING)))
-
-         # check for valid messages
-         isSend = 0
-         isReceive = 0
-         isLogin = 0
-         isStorage = 0
-         if message.startswith(RECEIVE_STRING):
-            isReceive = 1
-         elif message.startswith(SEND_STRING):
-            isSend = 1
-            if LOGIN_STRING in message:
-               isLogin = 1
-            elif STORAGE_STRING in message:
-               isStorage = 1
-         
-         # keep valid messages or move on
-         if (isSend == 1 or isReceive == 1):
-
-            # get the various date components
-            timestamp = row[0].value
-            split_timestamp = timestamp.split(' ')
-            date = split_timestamp[0]
-            time_string = split_timestamp[1]
-            time_array = time_string.split(':')
-            hour = int(time_array[0])
-            if split_timestamp[2] == 'PM':
-               hour = hour + 12
-            minute = int(time_array[1])
-            if int(minute) < 10:
-               time = str(hour) + ':0' + str(minute) 
-            else:
-               time = str(hour) + ':' + str(minute)
-
-            if DEBUG:
-               print('Valid message, appending to new worksheet...')
-            ns.append([timestamp, message, isReceive, isSend, 
-               isLogin, isStorage, date, hour, minute, time])
-            continue
-         if DEBUG:
-            print('SEND/RECEIVE not found, skipping row')
-
-   # close workbook and progress bar since they are done
-   pbar.close()
-   wb.close()
-   print('Data parse complete!')
-
-   # save the new data in a fresh workbook
-   print('Saving to ' + output_file + '...')
-   nb.save(output_file)
-   nb.close()
-   os.remove(input_file)
-   print('Data saved!')
-   print('Bye bye')
+   else:
+       print('Directory processing not implemented')
+       sys.exit(1)
 
 # runs main
 if __name__ == '__main__':
    main(sys.argv[1:])
+
