@@ -5,13 +5,15 @@ import sys, getopt, csv, os
 
 # defined constants
 DEBUG = False # set to False for regular usage
-DEBUG_ROWS = 100
+DEBUG_ROWS = 20
 DESCRIPTION_COL_NUM = 3
 SEND_STRING = 'Send: <STX>2M|'
 RECEIVE_STRING = 'Receive: <STX>3O|'
 LOGIN_STRING = '2M|1|101'
 STORAGE_STRING = '2M|1|103|'
 DEFAULT_SAVE = 'parsed.xlsx'
+PARSE_STRING = '-parsed-'
+DEFAULT_MERGE = 'merged.xlsx'
 USAGE = """usage: cennexus-log-condenser.py -i <inputfile> -o <outputfile> 
 alt-usage: cennexus-log-condenser.py -d <directory>"""
 
@@ -48,39 +50,36 @@ def parse_xlsx(inputfile, outputfile):
   @param outputfile the desired name of the output file
   """
   # open the workbooks and get the active sheets
-  print('Loading workbook: {}'.format(inputfile))
+  tqdm.write('Loading workbook: {}'.format(inputfile))
   wb = load_workbook(filename=inputfile, read_only=True)
   ws = wb.active
   nb = Workbook(write_only=True)
   ns = nb.create_sheet()
   row_count = ws.max_row
-  print('Loaded Workbook!')
+  tqdm.write('Loaded Workbook!')
 
   # loop through each row and write it to the new file if it is a valid message
-  print('Processing data... Please be patient')
+  tqdm.write('Processing data... Please be patient')
   ns.append(['Timestamp', 'Message', 'isReceive', 'isSend',
     'isLogin', 'isStorage', 'Date', 'Hour', 'Minute', 'Time'])
 
   # for debugging, limit how many rows are processed
   if DEBUG:
     i = 0
-    row_count = DEBUG_ROWS
 
   # using a progress bar here
   with tqdm(total=row_count, ascii=True, desc='Working...') as pbar:
     for row in ws.rows:
       if DEBUG:
         i = i + 1
-        if i == DEBUG_ROWS + 1:
-          break
       pbar.update(1)
       message = row[DESCRIPTION_COL_NUM].value
       if message is None: # just in case a row is empty
         continue
-      if DEBUG:
-        print(message)
-        print('Starts with SEND?: {}'.format(message.startswith(SEND_STRING)))
-        print('Starts with RECEIVE?: {}'.format(message.startswith(RECEIVE_STRING)))
+      if DEBUG and i < DEBUG_ROWS:
+        tqdm.write(message)
+        tqdm.write('Starts with SEND?: {}'.format(message.startswith(SEND_STRING)))
+        tqdm.write('Starts with RECEIVE?: {}'.format(message.startswith(RECEIVE_STRING)))
 
       # check for valid messages and process message counts and date/time
       isSend = 0
@@ -114,47 +113,99 @@ def parse_xlsx(inputfile, outputfile):
         else:
           time = str(hour) + ':' + str(minute)
 
-        if DEBUG:
-          print('Valid message, appending to new worksheet...')
+        # now write the final row
+        if DEBUG and i < DEBUG_ROWS:
+          tqdm.write('Valid message, appending to new worksheet...')
         ns.append([timestamp, message, isReceive, isSend, 
           isLogin, isStorage, date, hour, minute, time])
         continue
-        if DEBUG:
-          print('SEND/RECEIVE not found, skipping row')
+        if DEBUG and i < DEBUG_ROWS:
+          tqdm.write('SEND/RECEIVE not found, skipping row')
 
   # close workbook and progress bar since they are done
   pbar.close()
   wb.close()
-  print('Data parse complete!')
+  tqdm.write('Data parse complete!')
 
   # save the new data in a fresh workbook
-  print('Saving to ' + outputfile + '...')
+  tqdm.write('Saving to ' + outputfile + '...')
   nb.save(outputfile)
   nb.close()
   global isCSV
   if isCSV:
     if DEBUG: 
-      print('Removing temp file {}'.format(inputfile))
+      tqdm.write('Removing temp file {}'.format(str(inputfile)))
     os.remove(inputfile)
     isCSV = False # reset this in case another file is processed later
-  print('Data saved!')
-  return
+  tqdm.write('Data saved!')
+  return outputfile
 
 
-def merge_files(dir_source):
+def merge_files(dir_source, outputfile=DEFAULT_MERGE):
   """Merges all parsed files into a single file
 
   @param dir_source the source directory
   """
-  pass
+  files = os.listdir(dir_source)
+  file_count = len(files)
+  i = 0
+  if DEBUG:
+    print('Directory contents ({1}): {0}'.format(files, file_count))
+  # setup final workbook
+  fb = Workbook(write_only=True)
+  fs = fb.create_sheet()
 
+  # go through each file, appending rows if it is a parsed file
+  with tqdm(total=file_count, ascii=True, desc='Merging files') as pbar:
+    for filen in files:
+      if PARSE_STRING in filen:
+        wb = load_workbook(filename=dir_source + '\\' + filen, read_only=True)
+        ws = wb.active
+        tqdm.write('Appending {} to master file'.format(filen))
+        for row in ws.values:
+          fs.append(row)
+        wb.close()
+        os.remove(dir_source + '\\' + filen)
+      else:
+        tqdm.write('Skipping {}...'.format(filen))
+      pbar.update(1)
+
+  # save the merged file and cleanup
+  finalname = dir_source + '\\' + outputfile
+  print('Writing merged file...')
+  fb.save(finalname)
+  fb.close()
+  pbar.close()
+  print('Merge into {} complete!'.format(finalname))
+  return
 
 def process_dir(dir_source):
   """Processes all .xlsx or .csv files in a directory
 
   @param dir_source the source directory
   """
-  pass
+  files = os.listdir(dir_source)
+  file_count = len(files)
+  i = 0
+  global isCSV
+  if DEBUG:
+    print('Directory contents ({1}): {0}'.format(files, file_count))
+
+  with tqdm(total=file_count, ascii=True, desc='Processing files...') as pbar:
+    for f in files:
+      tqdm.write('Next file: {}'.format(f))
+      input_file = dir_source + '\\' + f
+      # if the input is .csv, convert to .xlsx
+      if f.endswith('.csv'):
+          tqdm.write('This is a .csv file, converting to .xlsx...')
+          input_file = convert_csv(input_file)
+          isCSV = True
+      parse_xlsx(input_file, dir_source + '\\' + str(i) + '.' +
+          str(file_count - 1) + PARSE_STRING + '.xlsx')  
+      i = i + 1
+      pbar.update(1)
+  pbar.close()
+  return
 
 
 # main method
@@ -169,6 +220,7 @@ def main(argv):
       print('Argument count: ' + str(len(argv)))
       print('Arguments: ' + str(argv))
 
+   # set up some defaults
    input_file = ''
    output_file = DEFAULT_SAVE
    dir_source = ''
@@ -208,10 +260,15 @@ def main(argv):
 
    # handle directory files first
    if dir_source != '':
+     if DEBUG: 
+       print('Processing files in directory {}'.format(dir_source))
      process_dir(dir_source)
-     merge_files(dir_source)
-     print('Directory process not implemented')
-     sys.exit(1)
+     if output_file != DEFAULT_SAVE:
+       merge_files(dir_source, output_file)
+     else: 
+       merge_files(dir_source)
+     print('Bye bye')
+     sys.exit(0)
 
    # otherwise handle the single input file
    else:
