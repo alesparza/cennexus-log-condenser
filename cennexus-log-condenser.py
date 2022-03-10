@@ -189,22 +189,20 @@ def main(argv):
       print(USAGE)
       sys.exit(2)
 
-   # if the input is .csv, convert to .xlsx
-   if input_file.endswith('.csv'):
-       print('This is a .csv file, converting to .xlsx...')
-       input_file = convert_csv(input_file)
-       isCSV = True
-
-
-   # convert the file
-   if dir_source == '':
-       parse_xlsx(input_file, output_file)   
-       print('Bye bye')
-       sys.exit(0)
+   # handle directory files first
+   if dir_source != '':
+     print('Directory process not implemented')
+     sys.exit(1)
 
    else:
-       print('Directory processing not implemented')
-       sys.exit(1)
+      # if the input is .csv, convert to .xlsx
+      if input_file.endswith('.csv'):
+          print('This is a .csv file, converting to .xlsx...')
+          input_file = convert_csv(input_file)
+          isCSV = True
+      parse_xlsx(input_file, output_file)   
+      print('Bye bye')
+      sys.exit(0)
 
 # runs main
 if __name__ == '__main__':
