@@ -12,6 +12,8 @@ RECEIVE_STRING = 'Receive: <STX>3O|'
 LOGIN_STRING = '2M|1|101'
 STORAGE_STRING = '2M|1|103|'
 DEFAULT_SAVE = 'parsed.xlsx'
+PARSE_STRING = '-parsed-'
+DEFAULT_MERGE = 'merged.xlsx'
 USAGE = """usage: cennexus-log-condenser.py -i <inputfile> -o <outputfile> 
 alt-usage: cennexus-log-condenser.py -d <directory>"""
 
@@ -111,6 +113,7 @@ def parse_xlsx(inputfile, outputfile):
         else:
           time = str(hour) + ':' + str(minute)
 
+        # now write the final row
         if DEBUG and i < DEBUG_ROWS:
           tqdm.write('Valid message, appending to new worksheet...')
         ns.append([timestamp, message, isReceive, isSend, 
@@ -138,13 +141,43 @@ def parse_xlsx(inputfile, outputfile):
   return outputfile
 
 
-def merge_files(dir_source):
+def merge_files(dir_source, outputfile=DEFAULT_MERGE):
   """Merges all parsed files into a single file
 
   @param dir_source the source directory
   """
-  print('File merging not implemented')
+  files = os.listdir(dir_source)
+  file_count = len(files)
+  i = 0
+  if DEBUG:
+    print('Directory contents ({1}): {0}'.format(files, file_count))
+  # setup final workbook
+  fb = Workbook(write_only=True)
+  fs = fb.create_sheet()
 
+  # go through each file, appending rows if it is a parsed file
+  with tqdm(total=file_count, ascii=True, desc='Merging files') as pbar:
+    for filen in files:
+      if PARSE_STRING in filen:
+        wb = load_workbook(filename=dir_source + '\\' + filen, read_only=True)
+        ws = wb.active
+        tqdm.write('Appending {} to master file'.format(filen))
+        for row in ws.values:
+          fs.append(row)
+        wb.close()
+        os.remove(dir_source + '\\' + filen)
+      else:
+        tqdm.write('Skipping {}...'.format(filen))
+      pbar.update(1)
+
+  # save the merged file and cleanup
+  finalname = dir_source + '\\' + outputfile
+  print('Writing merged file...')
+  fb.save(finalname)
+  fb.close()
+  pbar.close()
+  print('Merge into {} complete!'.format(finalname))
+  return
 
 def process_dir(dir_source):
   """Processes all .xlsx or .csv files in a directory
@@ -160,6 +193,7 @@ def process_dir(dir_source):
 
   with tqdm(total=file_count, ascii=True, desc='Processing files...') as pbar:
     for f in files:
+      tqdm.write('Next file: {}'.format(f))
       input_file = dir_source + '\\' + f
       # if the input is .csv, convert to .xlsx
       if f.endswith('.csv'):
@@ -167,10 +201,11 @@ def process_dir(dir_source):
           input_file = convert_csv(input_file)
           isCSV = True
       parse_xlsx(input_file, dir_source + '\\' + str(i) + '.' +
-          str(file_count - 1) + '-parsed-' + '.xlsx')  
+          str(file_count - 1) + PARSE_STRING + '.xlsx')  
       i = i + 1
       pbar.update(1)
   pbar.close()
+  return
 
 
 # main method
@@ -185,6 +220,7 @@ def main(argv):
       print('Argument count: ' + str(len(argv)))
       print('Arguments: ' + str(argv))
 
+   # set up some defaults
    input_file = ''
    output_file = DEFAULT_SAVE
    dir_source = ''
@@ -227,7 +263,10 @@ def main(argv):
      if DEBUG: 
        print('Processing files in directory {}'.format(dir_source))
      process_dir(dir_source)
-     merge_files(dir_source)
+     if output_file != DEFAULT_SAVE:
+       merge_files(dir_source, output_file)
+     else: 
+       merge_files(dir_source)
      print('Bye bye')
      sys.exit(0)
 
