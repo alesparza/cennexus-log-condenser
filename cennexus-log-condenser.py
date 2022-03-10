@@ -140,6 +140,23 @@ def parse_xlsx(inputfile, outputfile):
   print('Data saved!')
   return
 
+
+def merge_files(dir_source):
+  """Merges all parsed files into a single file
+
+  @param dir_source the source directory
+  """
+  pass
+
+
+def process_dir(dir_source):
+  """Processes all .xlsx or .csv files in a directory
+
+  @param dir_source the source directory
+  """
+  pass
+
+
 # main method
 def main(argv):
    """
@@ -191,9 +208,12 @@ def main(argv):
 
    # handle directory files first
    if dir_source != '':
+     process_dir(dir_source)
+     merge_files(dir_source)
      print('Directory process not implemented')
      sys.exit(1)
 
+   # otherwise handle the single input file
    else:
       # if the input is .csv, convert to .xlsx
       if input_file.endswith('.csv'):
