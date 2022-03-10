@@ -9,6 +9,8 @@ DEBUG_ROWS = 100
 DESCRIPTION_COL_NUM = 3
 SEND_STRING = 'Send: <STX>2M|'
 RECEIVE_STRING = 'Receive: <STX>3O|'
+LOGIN_STRING = '2M|1|101'
+STORAGE_STRING = '2M|1|103|'
 DEFAULT_SAVE = 'parsed.xlsx'
 USAGE = 'cennexus-log-condenser.py -i <inputfile> -o <outputfile>'
 
@@ -86,7 +88,8 @@ def main(argv):
 
    # loop through each row and write it to the new file if it is a valid message
    print('Processing data... Please be patient')
-   ns.append(['Timestamp', 'Message', 'isSend', 'isReceive', 'Date', 'Hour', 'Minute', 'Time'])
+   ns.append(['Timestamp', 'Message', 'isReceive', 'isSend',
+       'isLogin', 'isStorage', 'Date', 'Hour', 'Minute', 'Time'])
 
    if DEBUG:
       i = 0
@@ -111,10 +114,16 @@ def main(argv):
          # check for valid messages
          isSend = 0
          isReceive = 0
-         if message.startswith(SEND_STRING):
-            isSend = 1
-         elif message.startswith(RECEIVE_STRING):
+         isLogin = 0
+         isStorage = 0
+         if message.startswith(RECEIVE_STRING):
             isReceive = 1
+         elif message.startswith(SEND_STRING):
+            isSend = 1
+            if LOGIN_STRING in message:
+               isLogin = 1
+            elif STORAGE_STRING in message:
+               isStorage = 1
          
          # keep valid messages or move on
          if (isSend == 1 or isReceive == 1):
@@ -136,7 +145,8 @@ def main(argv):
 
             if DEBUG:
                print('Valid message, appending to new worksheet...')
-            ns.append([timestamp, message, isSend, isReceive, date, hour, minute, time])
+            ns.append([timestamp, message, isReceive, isSend, 
+               isLogin, isStorage, date, hour, minute, time])
             continue
          if DEBUG:
             print('SEND/RECEIVE not found, skipping row')
@@ -150,6 +160,7 @@ def main(argv):
    print('Saving to ' + output_file + '...')
    nb.save(output_file)
    nb.close()
+   os.remove(input_file)
    print('Data saved!')
    print('Bye bye')
 
