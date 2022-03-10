@@ -136,8 +136,12 @@ def parse_xlsx(inputfile, outputfile):
   print('Saving to ' + outputfile + '...')
   nb.save(outputfile)
   nb.close()
+  global isCSV
   if isCSV:
+    if DEBUG: 
+      print('Removing temp file {}'.format(inputfile))
     os.remove(inputfile)
+    isCSV = False # reset this in case another file is processed later
   print('Data saved!')
   return
 
