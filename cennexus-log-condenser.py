@@ -1,5 +1,5 @@
 # standard imports
-from openpyxl import Workbook, load_workbook, utils
+from openpyxl import Workbook, load_workbook
 from tqdm import tqdm
 import sys, getopt, csv, os
 
@@ -54,11 +54,6 @@ def parse_xlsx(inputfile, outputfile):
   nb = Workbook(write_only=True)
   ns = nb.create_sheet()
   row_count = ws.max_row
-  if DEBUG:
-    if (wb.epoch == utils.datetime.CALENDAR_WINDOWS_1900):
-      print('Workbook using the 1900 date system')
-    else:
-      print('Workbook not using the 1900 date system')
   print('Loaded Workbook!')
 
   # loop through each row and write it to the new file if it is a valid message
