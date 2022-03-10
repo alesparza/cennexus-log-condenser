@@ -4,17 +4,16 @@ A small project to clean up Cennexus Host logs.
 
 ## Dependencies
 
-* [Python 3.10.2](https://www.python.org/)
-* [tqdm 4.63.0](https://github.com/tqdm/tqdm)
-* [openpyxl 3.0.9](https://pypi.org/project/openpyxl/)
+* [Python](https://www.python.org/)
+* [tqdm](https://github.com/tqdm/tqdm)
+* [openpyxl](https://pypi.org/project/openpyxl/)
 
 ## Installation
 
 Be sure to install the dependencies
 
 ```
-pip install tqdm
-pip install openpyxl
+pip install -r requirements.txt
 ```
 
 ## Usage

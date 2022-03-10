@@ -1,0 +1,4 @@
+colorama>=0.4.4
+et-xmlfile>=1.1.0
+openpyxl>=3.0.9
+tqdm>=4.63.0
