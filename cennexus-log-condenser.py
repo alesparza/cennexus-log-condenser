@@ -14,6 +14,11 @@ USAGE = 'cennexus-log-condenser.py -i <inputfile> -o <outputfile>'
 
 # main method
 def main(argv):
+   """
+   This program will read in an .xlsx or .csv and parse out the Order or
+   Manufacturer messages.  It also adds some headers for easier pivot tableing.
+   Do note the dependencies.
+   """
    print('Cennexus Log Host Message Condenser')
    if DEBUG:
       print('Argument count: ' + str(len(argv)))
