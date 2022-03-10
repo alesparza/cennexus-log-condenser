@@ -46,6 +46,6 @@ I don't have this set up yet.  So I guess default copywrite rules apply.
 
 ## Contributors
 
-alesparza[https://github.com/alesparza)
+[alesparza](https://github.com/alesparza)
 
 
