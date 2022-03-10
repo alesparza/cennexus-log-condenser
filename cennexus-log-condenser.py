@@ -15,8 +15,13 @@ DEFAULT_SAVE = 'parsed.xlsx'
 USAGE = """usage: cennexus-log-condenser.py -i <inputfile> -o <outputfile> 
 alt-usage: cennexus-log-condenser.py -d <directory>"""
 
-# converts a csv to a .xlsx file
 def convert_csv(filename):
+  """Converts a csv to xlsx
+
+  Basically just copies all the rows into a new workbook
+
+  @return a string for the new file (foo.xlsx)
+  """
   wb = Workbook()
   ws = wb.active
   with open(filename, 'r') as f:
@@ -31,6 +36,17 @@ def convert_csv(filename):
 
 
 def parse_xlsx(inputfile, outputfile):
+  """Parses an xlsx to get only the host Order and Manufacturer messages
+
+  Includes a progress bar.
+
+  Some extra processing to get the date and time separated.
+
+  If the original file was from a .csv, it will delete the temporary .xlsx file.
+
+  @param inputfile the file to process
+  @param outputfile the desired name of the output file
+  """
   # open the workbooks and get the active sheets
   print('Loading workbook: {}'.format(inputfile))
   wb = load_workbook(filename=inputfile, read_only=True)
@@ -50,6 +66,7 @@ def parse_xlsx(inputfile, outputfile):
   ns.append(['Timestamp', 'Message', 'isReceive', 'isSend',
     'isLogin', 'isStorage', 'Date', 'Hour', 'Minute', 'Time'])
 
+  # for debugging, limit how many rows are processed
   if DEBUG:
     i = 0
     row_count = DEBUG_ROWS
@@ -63,14 +80,14 @@ def parse_xlsx(inputfile, outputfile):
           break
       pbar.update(1)
       message = row[DESCRIPTION_COL_NUM].value
-      if message is None:
+      if message is None: # just in case a row is empty
         continue
       if DEBUG:
         print(message)
         print('Starts with SEND?: {}'.format(message.startswith(SEND_STRING)))
         print('Starts with RECEIVE?: {}'.format(message.startswith(RECEIVE_STRING)))
 
-      # check for valid messages
+      # check for valid messages and process message counts and date/time
       isSend = 0
       isReceive = 0
       isLogin = 0
@@ -122,7 +139,7 @@ def parse_xlsx(inputfile, outputfile):
   if isCSV:
     os.remove(inputfile)
   print('Data saved!')
-
+  return
 
 # main method
 def main(argv):
