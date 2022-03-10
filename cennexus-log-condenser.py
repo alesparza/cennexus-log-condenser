@@ -12,7 +12,7 @@ RECEIVE_STRING = 'Receive: <STX>3O|'
 LOGIN_STRING = '2M|1|101'
 STORAGE_STRING = '2M|1|103|'
 DEFAULT_SAVE = 'parsed.xlsx'
-USAGE = 'cennexus-log-condenser.py -i <inputfile> -o <outputfile>'
+USAGE = 'usage: cennexus-log-condenser.py -i <inputfile> -o <outputfile>'
 
 # main method
 def main(argv):
