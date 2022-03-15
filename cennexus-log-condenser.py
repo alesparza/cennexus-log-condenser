@@ -105,6 +105,8 @@ def parse_xlsx(inputfile, outputfile):
         time_string = split_timestamp[1]
         time_array = time_string.split(':')
         hour = int(time_array[0])
+        if hour == 12:
+          hour = 0
         if split_timestamp[2] == 'PM':
           hour = hour + 12
         minute = int(time_array[1])
