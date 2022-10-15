@@ -1,6 +1,6 @@
 # cennexus-log-condenser
 
-A small project to clean up Cennexus Host logs.
+A small project to clean up Cennexus Host logs.  Cennexus is a Beckman Coulter automation line product and sometimes I need to pull a ton of data and filter out everything that isn't an ASTM message.
 
 ## Dependencies
 
