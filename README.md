@@ -42,7 +42,7 @@ Open a pull request I guess.
 
 ## License
 
-I don't have this set up yet.  So I guess default copywrite rules apply.
+GNU General Public License v3.0
 
 ## Contributors
 
